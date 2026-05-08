@@ -25,7 +25,6 @@ With `inheritance: true`, repo-level configs **merge** with this central config 
 | Code guidelines | Reads `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/*.mdc` from each repo |
 | Linked repositories | Architecture, API, Sentinel, Adapter, Broker — cross-repo analysis |
 | Tools | `golangci-lint`, `gitleaks`, `yamllint`, `markdownlint` enabled |
-| JIRA | Enabled for `HYPERFLEET` project (requires Forge app — see TODO below) |
 | Auto-review | Enabled, skips drafts and WIP PRs |
 
 ## Adding repo-specific overrides
@@ -57,22 +56,11 @@ See the [CodeRabbit configuration docs](https://docs.coderabbit.ai/guides/config
 
 `web_search.enabled: false` is set at the Red Hat enterprise level.
 
-### JIRA comment-thread depth
+### JIRA integration not approved
 
-CodeRabbit reads JIRA ticket descriptions and acceptance criteria but does **not** read comment threads on tickets. For deep JIRA validation (including refinements discussed in comments), use the Claude Code `/review-pr` skill.
+The CodeRabbit JIRA integration is not currently approved due to security concerns raised by PTLT. This may be revisited in the future. For JIRA ticket validation during PR reviews, use the Claude Code `/review-pr` skill instead.
 
 ## TODO: manual setup steps
-
-### JIRA Forge app installation
-
-The JIRA integration requires the CodeRabbit Forge app installed on our Jira instance. This is a one-time manual step:
-
-1. Contact PTLT admins (Rory Thrasher or Adi Demback) to install the Forge app
-2. An Installation Secret is generated in the CodeRabbit UI (expires in 15 minutes)
-3. The Forge app is installed via Atlassian Marketplace using that secret
-4. Once installed, CodeRabbit can link PRs to JIRA tickets and validate acceptance criteria
-
-Until this is done, the `jira` configuration in `.coderabbit.yaml` is ready but inactive.
 
 ### CodeRabbit app permissions
 
@@ -91,6 +79,5 @@ The app is likely already installed if CodeRabbit is reviewing PRs in these repo
 - [CodeRabbit configuration overview](https://docs.coderabbit.ai/guides/configuration-overview)
 - [Central configuration docs](https://docs.coderabbit.ai/configuration/central-configuration)
 - [Multi-repo analysis](https://docs.coderabbit.ai/knowledge-base/multi-repo-analysis)
-- [JIRA integration](https://docs.coderabbit.ai/integrations/jira)
 - [Tool integrations](https://docs.coderabbit.ai/tools/list)
 - [HyperFleet automated PR review strategy](https://github.com/openshift-hyperfleet/architecture/blob/main/hyperfleet/docs/automated-pr-review-strategy.md)

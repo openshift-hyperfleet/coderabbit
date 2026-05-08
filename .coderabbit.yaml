@@ -99,11 +99,6 @@ knowledge_base:
   web_search:
     enabled: false
 
-  jira:
-    usage: "enabled"
-    project_keys:
-      - "HYPERFLEET"
-
   code_guidelines:
     enabled: true
     filePatterns:
@@ -145,6 +140,3 @@ knowledge_base:
 
 chat:
   auto_reply: true
-  integrations:
-    jira:
-      usage: "enabled"
