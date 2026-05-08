@@ -1,0 +1,150 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: en-US
+inheritance: true
+
+reviews:
+  profile: assertive
+  high_level_summary: true
+  high_level_summary_in_walkthrough: true
+  review_status: true
+  collapse_walkthrough: true
+  sequence_diagrams: true
+  poem: false
+  request_changes_workflow: false
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+    ignore_title_keywords:
+      - WIP
+    labels:
+      - "!work-in-progress"
+
+  path_instructions:
+    - path: "**"
+      instructions: >-
+        Focus on major issues impacting performance, readability,
+        maintainability and security. Avoid nitpicks and avoid verbosity.
+        Validate changes against HyperFleet architecture standards from
+        the linked architecture repository.
+
+    - path: "cmd/**"
+      instructions: |
+        Critical entrypoint code. Review for:
+        - Correct signal handling and graceful shutdown (per graceful-shutdown.md standard)
+        - Configuration validation at startup (fail-fast)
+        - No business logic — delegation only
+        - Proper dependency injection setup
+
+    - path: "**/config/**"
+      instructions: |
+        Configuration changes affect all deployments. Review for:
+        - Backward compatibility of config changes
+        - Validation rules in Validate() method
+        - Duration formats use time.Duration with YAML duration format
+        - Environment variable overrides documented
+
+    - path: "deploy/**"
+      instructions: |
+        Deployment manifests affect production. Review for:
+        - Resource limits and requests are set
+        - PodDisruptionBudget configured
+        - Health probes (liveness, readiness, startup) configured (per health-endpoints.md)
+        - No hardcoded credentials or secrets in manifests
+
+    - path: "charts/**"
+      instructions: |
+        Helm chart changes affect all deployments. Review for:
+        - values.yaml has sensible defaults
+        - Templates use proper Helm conventions (per helm-chart-conventions.md)
+        - NOTES.txt updated if user-facing behavior changes
+        - Chart.yaml version bumped
+
+    - path: "migrations/**"
+      instructions: |
+        Database migrations are irreversible in production. Review for:
+        - Migration is backward compatible (old code can run against new schema)
+        - Includes rollback migration when possible
+        - Large table changes use online DDL or batched operations
+        - No data loss scenarios
+
+    - path: "**/*_test.go"
+      instructions: |
+        Review tests for:
+        - Test names describe the scenario, not the implementation
+        - Table-driven tests used for multiple cases
+        - Mocks are minimal — only mock external boundaries
+        - Integration tests tagged with //go:build integration
+
+    - path: "pkg/api/openapi/**"
+      instructions: |
+        This is GENERATED code from the OpenAPI spec. Do NOT review for
+        style, naming, or patterns. Only flag if the file appears to have
+        been manually modified (it should never be).
+
+  tools:
+    golangci-lint:
+      enabled: true
+    gitleaks:
+      enabled: true
+    yamllint:
+      enabled: true
+    markdownlint:
+      enabled: true
+
+knowledge_base:
+  opt_out: true
+  web_search:
+    enabled: false
+
+  jira:
+    usage: "enabled"
+    project_keys:
+      - "HYPERFLEET"
+
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "**/CLAUDE.md"
+      - "**/AGENTS.md"
+      - "**/.cursor/rules/*.mdc"
+
+  linked_repositories:
+    - repository: "openshift-hyperfleet/architecture"
+      instructions: >
+        Contains all HyperFleet architecture documentation, standards, and
+        component design docs. Use hyperfleet/standards/ for coding standards
+        (commit format, error model, logging, metrics, health endpoints,
+        graceful shutdown, container images, Helm conventions, linting,
+        directory structure). Use hyperfleet/components/ for component
+        architecture (API, Sentinel, Adapter, Broker). Use hyperfleet/docs/
+        for implementation guides and working agreements.
+    - repository: "openshift-hyperfleet/hyperfleet-api"
+      instructions: >
+        HyperFleet API service — source of truth for cluster/nodepool state.
+        Contains OpenAPI spec, database migrations, and API business logic.
+        Cross-reference when reviewing Sentinel, Adapter, or Broker changes
+        that interact with the API.
+    - repository: "openshift-hyperfleet/hyperfleet-sentinel"
+      instructions: >
+        Sentinel service — watches API for cluster/nodepool changes and
+        publishes CloudEvents to brokers. Cross-reference when reviewing
+        API changes that affect polling or event publishing.
+    - repository: "openshift-hyperfleet/hyperfleet-adapter"
+      instructions: >
+        Adapter framework — consumes CloudEvents from brokers and executes
+        provisioning/deprovisioning. Cross-reference when reviewing event
+        schema or broker changes.
+    - repository: "openshift-hyperfleet/hyperfleet-broker"
+      instructions: >
+        Broker abstraction library — supports RabbitMQ, GCP Pub/Sub, and
+        Stub implementations. Cross-reference when reviewing Sentinel or
+        Adapter broker integration changes.
+
+chat:
+  auto_reply: true
+  integrations:
+    jira:
+      usage: "enabled"
