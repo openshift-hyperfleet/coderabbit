@@ -2,9 +2,13 @@
 
 language: en-US
 inheritance: true
+tone_instructions: >-
+  Prefer concise responses (high information density, low fluff).
+  This is a multi-repo Kubernetes-native fleet management platform
+  built with Go. Components: API, Sentinel, Adapter, Broker.
 
 reviews:
-  profile: assertive
+  profile: chill
   high_level_summary: true
   high_level_summary_in_walkthrough: true
   review_status: true
@@ -12,6 +16,17 @@ reviews:
   sequence_diagrams: true
   poem: false
   request_changes_workflow: false
+  enable_prompt_for_ai_agents: true
+
+  slop_detection:
+    enabled: true
+
+  # Exclude generated, vendored, and lock files from review entirely.
+  # See https://docs.coderabbit.ai/guides/review-instructions#path-filtering
+  path_filters:
+    - "!**/vendor/**"
+    - "!**/zz_generated*"
+    - "!**/go.sum"
 
   auto_review:
     enabled: true
@@ -19,16 +34,80 @@ reviews:
     drafts: false
     ignore_title_keywords:
       - WIP
+      - DO NOT MERGE
     labels:
-      - "!work-in-progress"
+      - "!do-not-merge/work-in-progress"
+      - "!do-not-merge/hold"
 
+  # Code review check summaries sourced from openshift-hyperfleet/architecture
+  # hyperfleet/standards/code-review/ — update when source changes.
   path_instructions:
     - path: "**"
       instructions: >-
-        Focus on major issues impacting performance, readability,
-        maintainability and security. Avoid nitpicks and avoid verbosity.
-        Validate changes against HyperFleet architecture standards from
-        the linked architecture repository.
+        Prioritize Critical and Major severity issues. Minimize Minor
+        and Trivial findings. No pure style or formatting suggestions.
+        Limit to 3-5 comments max per file; group similar issues;
+        mention repeated patterns once. If nothing is broken, approve
+        briefly. Validate changes against HyperFleet architecture
+        standards from the linked architecture repository.
+
+        Apply these language-agnostic code review checks from HyperFleet
+        standards (hyperfleet/standards/code-review/ in the architecture
+        repo):
+
+        Security (SEC-01 to SEC-03): flag SQL/shell/template injection
+        from external input — must use parameterized queries. Flag secrets
+        in logs, error messages, or HTTP responses. Flag path traversal
+        from user input. Validate input at system boundaries (HTTP
+        handlers, CLI parsers, webhook receivers).
+
+        Code hygiene (HYG-01, HYG-02): TODOs and FIXMEs must reference
+        a ticket ID. Log levels must match severity (no slog.Error for
+        non-errors, no slog.Info for errors).
+
+    - path: "**/*.go"
+      instructions: |
+        Apply these Go-specific code review checks from HyperFleet
+        standards (hyperfleet/standards/code-review/ in the architecture
+        repo):
+
+        Error handling (ERR-01 to ERR-04): every error return MUST be
+        checked — flag silently discarded errors. Log-and-continue MUST
+        be intentional degradation with a comment, not a missing return.
+        Error responses MUST be followed by return to prevent
+        double-write. Wrap errors per Error Model Standard — no bare
+        return err.
+
+        Concurrency (CONC-01, CONC-02): shared state accessed from
+        goroutines MUST have synchronization (mutex, atomic, or channel).
+        Every goroutine MUST have a shutdown mechanism (context, done
+        channel, WaitGroup).
+
+        Exhaustiveness (EXH-01 to EXH-03): switch on typed enums MUST
+        handle all values or have justified default. Select without
+        default blocks — flag if unintentional. Flag nil/bounds access
+        without guards.
+
+        Resource lifecycle (RES-01 to RES-03): defer cleanup immediately
+        after successful resource creation. MUST clean up on ALL paths
+        including early returns. Propagate context.Context — flag
+        context.Background() when parent context exists. Flag
+        time.After in loops (timer leak).
+
+        Code quality (QUAL-01 to QUAL-03): vars that never change SHOULD
+        be const. Magic numbers/strings SHOULD be named constants. New
+        struct fields SHOULD be initialized in constructors. Functions
+        >50 lines or >5 branching paths — flag for decomposition.
+
+        Naming (NAME-01 to NAME-04): no stuttering (pkg.PkgThing).
+        Acronyms use consistent casing (ID not Id, HTTP not Http).
+        No Get prefix on getters. Single-method interfaces use -er
+        suffix.
+
+        Performance (PERF-01 to PERF-05): preallocate slices/maps when
+        size is known. Use strings.Builder in loops, not +=. Flag
+        allocations in hot loops. defer in for loops MUST be flagged
+        (memory accumulation). Flag N+1 query patterns.
 
     - path: "cmd/**"
       instructions: |
@@ -46,14 +125,6 @@ reviews:
         - Duration formats use time.Duration with YAML duration format
         - Environment variable overrides documented
 
-    - path: "deploy/**"
-      instructions: |
-        Deployment manifests affect production. Review for:
-        - Resource limits and requests are set
-        - PodDisruptionBudget configured
-        - Health probes (liveness, readiness, startup) configured (per health-endpoints.md)
-        - No hardcoded credentials or secrets in manifests
-
     - path: "charts/**"
       instructions: |
         Helm chart changes affect all deployments. Review for:
@@ -62,7 +133,7 @@ reviews:
         - NOTES.txt updated if user-facing behavior changes
         - Chart.yaml version bumped
 
-    - path: "migrations/**"
+    - path: "**/migrations/**"
       instructions: |
         Database migrations are irreversible in production. Review for:
         - Migration is backward compatible (old code can run against new schema)
@@ -72,18 +143,45 @@ reviews:
 
     - path: "**/*_test.go"
       instructions: |
-        Review tests for:
+        Apply the HyperFleet testing standard (hyperfleet/standards/
+        code-review/testing.md — TEST-01, TEST-02):
+        - New exported functions and critical logic paths SHOULD have tests
+        - Error paths SHOULD be tested, not just happy paths
         - Test names describe the scenario, not the implementation
-        - Table-driven tests used for multiple cases
+        - Table-driven tests with t.Run() for repeated patterns
+        - t.Helper() MUST be called in test helper functions
+        - t.Parallel() for independent tests (match file convention)
         - Mocks are minimal — only mock external boundaries
-        - Integration tests tagged with //go:build integration
+        - Integration tests tagged with //go:build integration or in test/integration/
+        - Assertions include descriptive messages — no bare t.Error(err)
 
-    - path: "pkg/api/openapi/**"
-      instructions: |
-        This is GENERATED code from the OpenAPI spec. Do NOT review for
-        style, naming, or patterns. Only flag if the file appears to have
-        been manually modified (it should never be).
+  finishing_touches:
+    docstrings:
+      enabled: true
+    unit_tests:
+      enabled: true
+    simplify:
+      enabled: true
 
+  # See https://docs.coderabbit.ai/pr-reviews/pre-merge-checks
+  # custom_checks = binary pass/fail gate (shows ❌ on PR status).
+  # Only rules that NO linter can express belong here. Mechanical
+  # rules are pushed down to golangci-lint (errcheck, gosec,
+  # exhaustive, goconst, revive, misspell — see .golangci.yml).
+  pre_merge_checks:
+    description:
+      mode: warning
+
+    custom_checks:
+      - name: "SEC-02: secrets in log output"
+        mode: error
+        instructions: |
+          Fail if any log statement (slog, log, logr, zap, fmt.Print*)
+          includes a token, password, credential, or secret as a field
+          or interpolated string. Exclude *_test.go and *.example files.
+          Pass if none found.
+
+  # See https://docs.coderabbit.ai/tools/list for all available tools.
   tools:
     golangci-lint:
       enabled: true
@@ -93,12 +191,25 @@ reviews:
       enabled: true
     markdownlint:
       enabled: true
+    hadolint:
+      enabled: true
+    shellcheck:
+      enabled: true
+    checkov:
+      enabled: true
+    trivy:
+      enabled: true
+    checkmake:
+      enabled: true
 
 knowledge_base:
-  opt_out: true
   web_search:
-    enabled: false
+    enabled: true
 
+  # NOTE: code_guidelines.filePatterns only matches files within the
+  # reviewed repository. Cross-repo guideline files (e.g. from the
+  # architecture repo) cannot be referenced here. Use path_instructions
+  # to inline review criteria from cross-repo standards instead.
   code_guidelines:
     enabled: true
     filePatterns:
@@ -113,9 +224,16 @@ knowledge_base:
         component design docs. Use hyperfleet/standards/ for coding standards
         (commit format, error model, logging, metrics, health endpoints,
         graceful shutdown, container images, Helm conventions, linting,
-        directory structure). Use hyperfleet/components/ for component
-        architecture (API, Sentinel, Adapter, Broker). Use hyperfleet/docs/
-        for implementation guides and working agreements.
+        directory structure). Use hyperfleet/standards/code-review/ for
+        mechanical code review checks (error-handling, concurrency,
+        exhaustiveness, resource-lifecycle, code-quality, testing, naming,
+        security, code-hygiene, performance). Use hyperfleet/components/ for
+        component architecture (API, Sentinel, Adapter, Broker). Use
+        hyperfleet/docs/ for implementation guides and working agreements.
+    # TODO(HYPERFLEET-1135): Move service-specific linked repos below to
+    # per-repo .coderabbit.yaml files with inheritance: true. Each repo
+    # should declare only its actual dependencies. Architecture repo stays
+    # here (all repos need it).
     - repository: "openshift-hyperfleet/hyperfleet-api"
       instructions: >
         HyperFleet API service — source of truth for cluster/nodepool state.

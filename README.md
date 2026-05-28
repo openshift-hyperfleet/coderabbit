@@ -20,8 +20,8 @@ With `inheritance: true`, repo-level configs **merge** with this central config 
 
 | Area | Configuration |
 |------|--------------|
-| Review profile | `assertive` — thorough feedback on every PR |
-| Path instructions | Stricter review for `cmd/`, `config/`, `deploy/`, `charts/`, `migrations/` |
+| Review profile | `chill` — focused on critical issues, minimal noise |
+| Path instructions | Go mechanical checks (error handling, concurrency, exhaustiveness, resource lifecycle, code quality, naming, performance), language-agnostic checks (security, code hygiene), testing standard, plus stricter review for `cmd/`, `config/`, `deploy/`, `charts/`, `migrations/` |
 | Code guidelines | Reads `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/*.mdc` from each repo |
 | Linked repositories | Architecture, API, Sentinel, Adapter, Broker — cross-repo analysis |
 | Tools | `golangci-lint`, `gitleaks`, `yamllint`, `markdownlint` enabled |
@@ -44,6 +44,8 @@ reviews:
         Additional repo-specific review instructions.
 ```
 
+> **Warning:** `inheritance: true` is **required** in every per-repo `.coderabbit.yaml`. Without it, CodeRabbit silently ignores the entire central config — all path instructions, review profile, and tool settings disappear for that repo. Additionally, `path_instructions` arrays dedupe by path key: if your repo defines `**/*.go`, it shadows the central `**/*.go` entry entirely (instructions are NOT concatenated). Do NOT redefine `**`, `**/*.go`, or `**/*_test.go` path keys unless you intentionally want to replace the central code review checks.
+
 See the [CodeRabbit configuration docs](https://docs.coderabbit.ai/guides/configuration-overview) for all available options.
 
 ## Current limitations
@@ -56,6 +58,10 @@ See the [CodeRabbit configuration docs](https://docs.coderabbit.ai/guides/config
 
 `web_search.enabled: false` is set at the Red Hat enterprise level.
 
+### Code guidelines are repo-local only
+
+`code_guidelines.filePatterns` only matches files within the reviewed repository. Cross-repo guideline files (e.g. from the architecture repo) cannot be referenced here. The mechanical code review checks from the architecture repo are inlined as condensed summaries in `path_instructions` instead. See the YAML comments in `.coderabbit.yaml` for details.
+
 ### JIRA integration not approved
 
 The CodeRabbit JIRA integration is not currently approved due to security concerns raised by PTLT. This may be revisited in the future. For JIRA ticket validation during PR reviews, use the Claude Code `/review-pr` skill instead.
@@ -64,7 +70,7 @@ The CodeRabbit JIRA integration is not currently approved due to security concer
 
 ### CodeRabbit app permissions
 
-Ensure the CodeRabbit GitHub app is installed on all linked repositories:
+Ensure the CodeRabbit GitHub app is installed on this config repository and all linked repositories:
 
 - `openshift-hyperfleet/architecture`
 - `openshift-hyperfleet/hyperfleet-api`
