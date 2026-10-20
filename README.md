@@ -48,6 +48,40 @@ reviews:
 
 See the [CodeRabbit configuration docs](https://docs.coderabbit.ai/guides/configuration-overview) for all available options.
 
+## Pre-commit security policy
+
+The central rule follows the [HyperFleet hook guide](https://github.com/openshift-hyperfleet/architecture/blob/main/hyperfleet/docs/pre-commit-hooks.md). It recognizes `github.com/leaktk/leaktk` and `github.com/openshift-hyperfleet/hyperfleet-hooks` as exact sources, not their entire organizations. The existing trusted-owner list is otherwise unchanged.
+
+All remote hooks require full 40-character Git SHAs and matching `# frozen: <tag>` comments, including hooks from trusted sources. Verified annotated-tag object SHAs are valid frozen refs; they need not equal the peeled commit SHA. `repo: local` and `repo: meta` do not have remote revisions. Source trust and SHA pinning are not proof of safe code or execution isolation.
+
+The only system-hook exception is the published HyperFleet registry's `hyperfleet-gofmt` → `make gofmt`, `hyperfleet-golangci-lint` → `make lint`, and `hyperfleet-go-vet` → `make go-vet`. Review the pinned manifest, consumer overrides/arguments, and any changes to the delegated Make recipes and their dependencies. The exception does not approve new revisions automatically, allow arbitrary commands, or waive human review and CI. There is no corresponding blanket exception for local or script hooks.
+
+### Review regression cases
+
+These are expected review outcomes, not an executable security scanner. YAML/schema validation can check configuration structure, but cannot prove that the reviewer follows natural-language instructions.
+
+| Case | Expected outcome |
+|------|------------------|
+| LeakTK's documented Go hook, exact source, verified full SHA and frozen release comment | No generic untrusted-source finding; review revision changes normally |
+| HyperFleet commitlint, exact source, verified frozen SHA, published Go entrypoint | No generic untrusted-source finding; no system-hook exception needed |
+| Each of the three documented HyperFleet system hooks with its exact published entrypoint and unchanged safe Make recipe | No finding solely for source trust or `language: system` |
+| Verified frozen annotated-tag object resolving to the stated release | Accept as a full Git SHA; do not demand the peeled commit instead |
+| Another repo under `leaktk` or `openshift-hyperfleet`, or a lookalike owner/host/repository | No new source exception; flag an untrusted origin |
+| `rev: main`, a release tag, or an abbreviated SHA, even with a frozen comment or trusted source | Critical immutable-pinning finding |
+| Full SHA with a missing or mismatched frozen comment | Update-metadata finding; not by itself evidence of malicious code |
+| A new system hook ID, changed entrypoint, or consumer arguments invoking additional commands/targets | Outside the exception; flag unexpected execution |
+| A local system hook reusing one of the three HyperFleet IDs | Not covered by the remote-source exception; review command execution |
+| A documented target or its transitive recipe/script changed to execute unverified downloads, upload credentials, or interpolate untrusted shell input | Security finding remains required, regardless of hook source |
+| Manifest unavailable at the pinned SHA | Report an explicit verification gap; do not assume the hook matches |
+| Local/meta hook with no `rev` | Do not request a remote SHA; other execution checks still apply |
+
+### Validation and rollout
+
+1. Parse `.coderabbit.yaml` and validate it against the [CodeRabbit v2 schema](https://coderabbit.ai/integrations/schema.v2.json).
+2. Compare the parsed config with the base branch: changes should be limited to the pre-commit and Makefile path instructions, preserving the other review settings.
+3. Review the cases above with the central policy maintainers. This repository has no automated integration/E2E harness for CodeRabbit review behavior.
+4. After the central config is merged and active, request a fresh review of a representative adoption/migration PR and verify the positive cases no longer produce the generic trust/system findings. Verify negative cases in controlled review fixtures before treating rollout as complete. Do not weaken enterprise overrides or add consumer-local overrides to bypass them.
+
 ## Current limitations
 
 ### Learnable rules disabled
