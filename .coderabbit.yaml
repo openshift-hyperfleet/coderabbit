@@ -399,7 +399,8 @@ reviews:
         FROZEN REFS: full 40-character Git SHAs and "# frozen: <tag>" comments
         for all remote hooks; local/meta hooks have no remote rev. Missing
         or incorrect comments are metadata defects, not malicious execution.
-        Treat these as documented baseline refs, not reviewer remote checks:
+        These refs are documented examples, NOT a version allowlist or
+        reviewer remote checks:
         - LeakTK v0.3.12: c6f5a11329736a8dc1551a84603f117bd9ed498e
         - HyperFleet v0.3.0: d9aab6d723c9246bd2f63a982bf1d9cf0805b3a4
           (annotated tag), or 0c42dbf10d4087ac8c788b19b9d29afd7bccdd4a
@@ -407,9 +408,12 @@ reviews:
         - pre-commit-hooks v6.0.0: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c
         Humans/CI resolve SHAs/tags, including other annotated refs; never
         claim an unperformed remote check.
+        Routine version/SHA bumps preserving the source and hook contract
+        need no central policy change; do not flag an unlisted version alone.
 
         NARROW SYSTEM-HOOK EXCEPTION:
-        Documented at the HyperFleet v0.3.0 refs above, ONLY for the exact
+        This source/ID/language/entry contract is version-independent
+        (documented in the v0.3.0 example above), ONLY for the exact
         github.com/openshift-hyperfleet/hyperfleet-hooks source:
         - hyperfleet-gofmt -> system -> make gofmt
         - hyperfleet-golangci-lint -> system -> make lint
@@ -421,7 +425,8 @@ reviews:
         a non-blocking informational note, never Critical on that basis.
         Retain Makefile security checks on recipes, transitive targets,
         includes, variables and scripts; human review and CI still apply.
-        New releases require baseline maintenance, not automatic approval.
+        New sources or changes to the exception contract require a policy
+        PR before rollout; version-only bumps do not. No automatic approval.
 
         FLAG AS CRITICAL:
         1. Remote hook sources outside the exact repository list above
