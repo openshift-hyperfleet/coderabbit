@@ -50,11 +50,22 @@ See the [CodeRabbit configuration docs](https://docs.coderabbit.ai/guides/config
 
 ## Pre-commit security policy
 
-The central rule follows the [HyperFleet hook guide](https://github.com/openshift-hyperfleet/architecture/blob/main/hyperfleet/docs/pre-commit-hooks.md). It recognizes `github.com/leaktk/leaktk` and `github.com/openshift-hyperfleet/hyperfleet-hooks` as exact sources, not their entire organizations. The existing trusted-owner list is otherwise unchanged.
+The central rule follows the [HyperFleet hook guide](https://github.com/openshift-hyperfleet/architecture/blob/main/hyperfleet/docs/pre-commit-hooks.md). All sources are now exact repositories, not owner prefixes:
 
-All remote hooks require full 40-character Git SHAs and matching `# frozen: <tag>` comments, including hooks from trusted sources. Verified annotated-tag object SHAs are valid frozen refs; they need not equal the peeled commit SHA. `repo: local` and `repo: meta` do not have remote revisions. Source trust and SHA pinning are not proof of safe code or execution isolation.
+- `github.com/leaktk/leaktk`
+- `github.com/openshift-hyperfleet/hyperfleet-hooks`
+- `github.com/pre-commit/pre-commit-hooks`
+- `github.com/pre-commit/mirrors-mypy`
+- `github.com/shellcheck-py/shellcheck-py`
+- `github.com/astral-sh/ruff-pre-commit`
 
-The only system-hook exception is the published HyperFleet registry's `hyperfleet-gofmt` → `make gofmt`, `hyperfleet-golangci-lint` → `make lint`, and `hyperfleet-go-vet` → `make go-vet`. Review the pinned manifest, consumer overrides/arguments, and any changes to the delegated Make recipes and their dependencies. The exception does not approve new revisions automatically, allow arbitrary commands, or waive human review and CI. There is no corresponding blanket exception for local or script hooks.
+The list retains the documented HyperFleet sources and the previously trusted repositories found in an inventory of active organization repos' default-branch root configs on 2026-10-21. The old broad owner grants for `golangci`, `rhysd`, `google`, `gitleaks`, `norwoodj`, `igorshubovych`, `dnephin`, `doublify`, and `adrienverge` had no uses in that inventory and are removed, not expanded into guessed repository names. Existing unlisted sources in legacy configs are not newly approved by this change. Other repositories under any listed owner require a policy PR.
+
+All remote hooks require full 40-character Git SHAs and matching `# frozen: <tag>` comments, including hooks from trusted sources. The rule records known baseline refs as documented, not as remote checks performed by the reviewer: LeakTK v0.3.12, HyperFleet hooks v0.3.0 (annotated-tag or peeled-commit SHA), and pre-commit-hooks v6.0.0. SHA/tag resolution belongs to humans and CI. Other annotated-tag object SHAs can also be valid frozen refs; inability to check a remote is only a non-blocking informational note, never by itself a Critical finding. `repo: local` and `repo: meta` do not have remote revisions. Source trust and SHA pinning are not proof of safe code or execution isolation.
+
+The only documented system-hook exception is HyperFleet v0.3.0's `hyperfleet-gofmt` → `make gofmt`, `hyperfleet-golangci-lint` → `make lint`, and `hyperfleet-go-vet` → `make go-vet`. Review visible revision changes, consumer overrides/arguments, and changes to the delegated Make recipes and their dependencies. The exception does not approve new revisions automatically, allow arbitrary commands, or waive human review and CI. There is no corresponding blanket exception for local or script hooks.
+
+This is a maintenance commitment: every HyperFleet hooks release that adds or renames a hook needs a central policy PR before consumer rollout, or the new system hook falls outside the exception and is flagged as Critical. Refresh the documented baseline refs for other release changes as part of normal release review, rather than assuming a new revision inherits the exception.
 
 ### Review regression cases
 
@@ -62,17 +73,17 @@ These are expected review outcomes, not an executable security scanner. YAML/sch
 
 | Case | Expected outcome |
 |------|------------------|
-| LeakTK's documented Go hook, exact source, verified full SHA and frozen release comment | No generic untrusted-source finding; review revision changes normally |
-| HyperFleet commitlint, exact source, verified frozen SHA, published Go entrypoint | No generic untrusted-source finding; no system-hook exception needed |
-| Each of the three documented HyperFleet system hooks with its exact published entrypoint and unchanged safe Make recipe | No finding solely for source trust or `language: system` |
-| Verified frozen annotated-tag object resolving to the stated release | Accept as a full Git SHA; do not demand the peeled commit instead |
-| Another repo under `leaktk` or `openshift-hyperfleet`, or a lookalike owner/host/repository | No new source exception; flag an untrusted origin |
+| LeakTK's documented Go hook, exact source, documented full SHA and frozen release comment | No generic untrusted-source finding; review revision changes normally |
+| HyperFleet commitlint, exact source, documented frozen SHA, published Go entrypoint | No generic untrusted-source finding; no system-hook exception needed |
+| Each of the three documented HyperFleet v0.3.0 system hooks with its exact published entrypoint and unchanged safe Make recipe | No finding solely for source trust or `language: system` |
+| The documented HyperFleet v0.3.0 frozen annotated-tag object SHA | Accept the documented ref; do not demand the peeled commit or claim a remote check |
+| Another repo under any listed owner (including `pre-commit` or `astral-sh`), or a lookalike owner/host/repository | No owner-prefix exception; flag an untrusted origin |
 | `rev: main`, a release tag, or an abbreviated SHA, even with a frozen comment or trusted source | Critical immutable-pinning finding |
 | Full SHA with a missing or mismatched frozen comment | Update-metadata finding; not by itself evidence of malicious code |
 | A new system hook ID, changed entrypoint, or consumer arguments invoking additional commands/targets | Outside the exception; flag unexpected execution |
 | A local system hook reusing one of the three HyperFleet IDs | Not covered by the remote-source exception; review command execution |
 | A documented target or its transitive recipe/script changed to execute unverified downloads, upload credentials, or interpolate untrusted shell input | Security finding remains required, regardless of hook source |
-| Manifest unavailable at the pinned SHA | Report an explicit verification gap; do not assume the hook matches |
+| Manifest or SHA/tag resolution unavailable remotely | At most a non-blocking informational note; not a Critical finding or a claim that the reviewer verified it |
 | Local/meta hook with no `rev` | Do not request a remote SHA; other execution checks still apply |
 
 ### Validation and rollout
